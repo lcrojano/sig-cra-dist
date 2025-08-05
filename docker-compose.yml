@@ -1,0 +1,241 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker.network=app-network"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./tools/letsencrypt:/letsencrypt
+    networks:
+      - app-network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  api-laravel:
+    build:
+      context: ./apps/api-laravel
+      dockerfile: Dockerfile
+    env_file: 
+      - ./apps/api-laravel/.env
+    volumes:
+      - api-laravel-vendor:/var/www/html/vendor
+      - ./apps/tileserver-gl:/data:ro
+      - composer-cache:/root/.composer/cache
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-forge}
+      MYSQL_USER: ${DB_USERNAME:-forge}
+      #MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./tools/docker/mysql/migration:/docker-entrypoint-initdb.d:ro
+      - ./tools/docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=caching_sha2_password
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    secrets:
+     # - mysql_password
+      - mysql_root_password
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD_FILE: /run/secrets/mysql_root_password
+    ports:
+      - "8081:80"
+    networks:
+      - app-network
+    depends_on:
+      - mysql
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phpmyadmin.rule=Host(`pma.${DOMAIN}`)"
+      - "traefik.http.services.phpmyadmin.loadbalancer.server.port=80"
+    secrets:
+      - mysql_root_password
+  
+  tileserver:
+    image:  klokantech/tileserver-gl:v2.6.0
+    volumes:
+      - ./apps/tileserver-gl:/data:ro
+    command: --verbose --config /data/tileserver-gl-config-colombia.json
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  # Utility containers with proper resource limits
+  geostyler-cli:
+    build:
+      context: ./libs/geostyler-cli
+      dockerfile: Dockerfile
+    container_name: geostyler-cli
+    user: "www-data:www-data"
+    volumes:
+      - ./libs/geostyler-cli:/app:ro
+      - ./apps/tileserver-gl:/data
+    working_dir: /app
+    entrypoint: ["tail", "-f", "/dev/null"]
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  gdal:
+    image: ghcr.io/osgeo/gdal:ubuntu-full-3.11.3
+    container_name: gdal
+    volumes:
+      - ./apps/tileserver-gl:/data
+    networks:
+      - app-network
+    entrypoint: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      test: ["CMD", "gdalinfo", "--version"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: '1.0'
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  tippecanoe:
+    image: klokantech/tippecanoe:latest
+    container_name: tippecanoe
+    volumes:
+      - ./apps/tileserver-gl:/data
+    networks:
+      - app-network
+    entrypoint: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      test: ["CMD", "tippecanoe", "--version"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "com.metamag.project=sig-platform"
+
+  gdal2mbtiles:
+    image: joeakeem/gdal2mbtiles:latest
+    container_name: gdal2mbtiles
+    volumes:
+      - ./apps/tileserver-gl:/data
+    networks:
+      - app-network
+    entrypoint: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: '0.5'
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "com.metamag.project=sig-platform"
+
+networks:
+  app-network:
+    driver: bridge
+    name: app-network
+    driver_opts:
+      com.docker.network.bridge.name: br-app
+    labels:
+      - "com.metamag.project=sig-platform"
+
+volumes:
+  mysql-data:
+    driver: local
+    labels:
+        - "com.metamag.project=sig-platform"
+  api-laravel-vendor:
+    driver: local
+    labels:
+        - "com.metamag.project=sig-platform"
+  composer-cache:
+    driver: local
+    labels:
+        - "com.metamag.project=sig-platform"
+  
+
+secrets:
+ # mysql_password:
+ #   file: ./tools/docker/mysql/secrets/mysql_password.txt
+ #   labels:
+ #       - "com.metamag.project=sig-platform"
+  mysql_root_password:
+    file: ./tools/docker/mysql/secrets/mysql_root_password.txt
+    labels:
+        - "com.metamag.project=sig-platform"

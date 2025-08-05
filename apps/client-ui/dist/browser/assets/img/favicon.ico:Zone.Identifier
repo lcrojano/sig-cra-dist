@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://cloudconvert.com/
+HostUrl=https://eu-central.storage.cloudconvert.com/tasks/50cc12b9-05a2-4cfc-9040-5d2c50504d8f/logo%20CRA.ico?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=cloudconvert-production%2F20250506%2Ffra%2Fs3%2Faws4_request&X-Amz-Date=20250506T184059Z&X-Amz-Expires=86400&X-Amz-Signature=ca7228017985eb893d825b0e62973a78934055f4a8b656e99921b17cd966af42&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%3D%22logo%20CRA.ico%22&response-content-type=image%2Fvnd.microsoft.icon&x-id=GetObject

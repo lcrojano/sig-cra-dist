@@ -1,0 +1,154 @@
+# Monitoring
+
+  # ✅ SonarQube for code quality analysis
+  sonarqube:
+    image: sonarqube:10.3-community
+    depends_on:
+      - sonarqube-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 2g
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarqube.rule=Host(`sonar.${DOMAIN}`)"
+      - "traefik.http.routers.sonarqube.entrypoints=websecure"
+      - "traefik.http.routers.sonarqube.tls.certresolver=myresolver"
+      - "traefik.http.services.sonarqube.loadbalancer.server.port=9000"
+      - "traefik.docker.network=app-network"
+
+  # ✅ PostgreSQL database for SonarQube
+  sonarqube-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonarqube_db:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ✅ Trivy for vulnerability scanning
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: trivy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - trivy_cache:/root/.cache/trivy
+      - ./apps:/workspace:ro
+    networks:
+      - app-network
+    entrypoint: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ✅ OWASP ZAP for security testing
+  zap:
+    image:  ghcr.io/zaproxy/zaproxy:stable
+    container_name: zap
+    volumes:
+      - zap_data:/zap/wrk
+    networks:
+      - app-network
+    command: zap-baseline.py -t ${DOMAIN} -g gen.conf -r testreport.html
+    restart: "no"
+    mem_limit: 1g
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.zap.rule=Host(`zap.${DOMAIN}`)"
+      - "traefik.http.routers.zap.entrypoints=websecure"
+      - "traefik.http.routers.zap.tls.certresolver=myresolver"
+      - "traefik.http.services.zap.loadbalancer.server.port=8080"
+      - "traefik.docker.network=app-network"
+
+  # ✅ Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./tools/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 512m
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls.certresolver=myresolver"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.docker.network=app-network"
+
+  # ✅ Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./tools/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 512m
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.docker.network=app-network"
+
+  # ✅ Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - app-network
+    restart: unless-stopped
+    mem_limit: 128m
+
+    
+  volumes:
+    sonarqube_data:
+    sonarqube_extensions:
+    sonarqube_logs:
+    sonarqube_db:
+    trivy_cache:
+    zap_data:
+    prometheus_data:
+    grafana_data:

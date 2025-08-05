@@ -1,0 +1,15 @@
+{
+  "production": true,
+  "baseUrl": {
+    "frontend": "localhost:4200",
+    "backend": "http://localhost:8000",
+    "api": "http://localhost:8000/api/",
+    "tileserver": "http://localhost:8082"
+  },
+  "oauth2": {
+    "token": "http://localhost:8000/oauth/token",
+    "base": "http://localhost:8000/api/oauth/",
+    "whitelist": {
+      "urlContains": "token/refresh"
+    }
+  }}
