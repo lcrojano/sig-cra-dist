@@ -14,8 +14,9 @@ services:
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
       # ✅ FIX: Use a middleware for HTTP-to-HTTPS redirection
       - "--entrypoints.web.http.middlewares=redirect-to-https@docker"
-      # ✅ FIX: Define the middleware using v3 syntax (no "http." prefix)
-      - "--middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.api-laravel.middlewares=redirect-to-https@docker"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      
     ports:
       - "80:80"
       - "443:443"

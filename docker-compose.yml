@@ -29,9 +29,9 @@ services:
     env_file: 
       - ./apps/api-laravel/.env
     volumes:
-      - api-laravel-vendor:/var/www/html/vendor
+ 
       - ./apps/tileserver-gl:/data:ro
-      - composer-cache:/root/.composer/cache
+ 
     depends_on:
       mysql:
         condition: service_healthy
@@ -216,14 +216,7 @@ volumes:
     driver: local
     labels:
         - "com.metamag.project=sig-platform"
-  api-laravel-vendor:
-    driver: local
-    labels:
-        - "com.metamag.project=sig-platform"
-  composer-cache:
-    driver: local
-    labels:
-        - "com.metamag.project=sig-platform"
+ 
   
 
 secrets:
