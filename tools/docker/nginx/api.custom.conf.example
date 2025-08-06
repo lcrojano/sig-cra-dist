@@ -1,0 +1,94 @@
+server {
+    listen 80;
+    server_name https://api.sig-cra.metamagagency.com;
+    root /var/www/html/public;
+    index index.php index.html index.htm;
+    client_max_body_size 3G;  # Allow large uploads
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    # ✅ MOST SPECIFIC: Direct match for your assets path
+    location ~* ^/assets/files/.*\.(png|jpg|jpeg|gif|ico|svg|css|js|woff|woff2|ttf)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        add_header Access-Control-Allow-Origin "https://sig-cra.metamagagency.com" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept" always;
+        add_header Vary "Origin" always;
+        
+        # Debug header to confirm this location block is being used
+        add_header X-Debug-Location "assets-files" always;
+        
+        try_files $uri =404;
+    }
+
+    # Handle Angular routes
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Handle API routes
+    location ~ ^/api {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # General assets folder (fallback)
+    location /assets/ {
+        add_header Access-Control-Allow-Origin "https://sig-cra.metamagagency.com" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept" always;
+        add_header Vary "Origin" always;
+        add_header X-Debug-Location "assets-general" always;
+    }
+
+    # Storage public
+    location /storage/public {
+        add_header Access-Control-Allow-Origin "https://sig-cra.metamagagency.com" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept" always;
+        add_header Vary "Origin" always;
+    }
+
+    # PHP-FPM configuration
+    location ~ \.php$ {
+        fastcgi_pass api-laravel:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+
+        fastcgi_connect_timeout 3600s;
+        fastcgi_send_timeout 3600s;
+        fastcgi_read_timeout 3600s;
+
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+    }
+
+    # Deny access to hidden files
+    location ~ /\. {
+        deny all;
+    }
+
+    # Deny access to sensitive files
+    location ~ /(?:\.env|\.git|composer\.|package\.json|yarn\.lock|Dockerfile|docker-compose) {
+        deny all;
+        return 404;
+    }
+
+    # Health check endpoint
+    location /ping {
+        access_log off;
+        return 200 "pong\n";
+        add_header Content-Type text/plain;
+    }
+}

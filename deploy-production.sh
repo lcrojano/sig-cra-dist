@@ -226,6 +226,51 @@ else
 fi
 
 # ==============================================================================
+# 🔧 Nginx api Configuration Setup
+# ==============================================================================
+
+NGINX_CONFIG_PATH="tools/docker/nginx"
+NGINX_EXAMPLE="$NGINX_CONFIG_PATH/api.custom.conf.example"
+NGINX_CONFIG="$NGINX_CONFIG_PATH/api.custom.conf"
+
+# Check if Nginx config example exists
+if [ ! -f "$NGINX_EXAMPLE" ]; then
+    print_warning "Nginx config example not found at $NGINX_EXAMPLE"
+    print_warning "Skipping Nginx config generation"
+else
+    print_status "Generating Nginx configuration from example..."
+    
+    # Create nginx config directory if it doesn't exist
+    mkdir -p "$NGINX_CONFIG_PATH"
+    
+    sed "s|sig-cra\.metamagagency\.com|$DOMAIN|g" "$NGINX_EXAMPLE" > "$NGINX_CONFIG"
+    print_status "✅ api.custom.conf created with domain: $DOMAIN"
+fi
+
+# ==============================================================================
+# 🔧 Nginx Client Configuration Setup
+# ==============================================================================
+
+NGINX_CONFIG_PATH="tools/docker/nginx"
+NGINX_EXAMPLE="$NGINX_CONFIG_PATH/client.custom.conf.example"
+NGINX_CONFIG="$NGINX_CONFIG_PATH/client.custom.conf"
+
+# Check if Nginx config example exists
+if [ ! -f "$NGINX_EXAMPLE" ]; then
+    print_warning "Nginx client config example not found at $NGINX_EXAMPLE"
+    print_warning "Skipping Nginx config generation"
+else
+    print_status "Generating client Nginx configuration from example..."
+    
+    # Create nginx config directory if it doesn't exist
+    mkdir -p "$NGINX_CONFIG_PATH"
+    
+    sed "s|sig-cra\.metamagagency\.com|$DOMAIN|g" "$NGINX_EXAMPLE" > "$NGINX_CONFIG"
+    print_status "✅ client.custom.conf created with domain: $DOMAIN"
+fi
+
+
+# ==============================================================================
 # 🧩 Replace MySQL Migration Base URLs
 # ==============================================================================
 
