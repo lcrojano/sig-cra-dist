@@ -55,12 +55,7 @@ services:
         condition: service_healthy
     networks:
       - app-network
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+   
     restart: unless-stopped
     labels:
       - "com.metamag.project=sig-platform"

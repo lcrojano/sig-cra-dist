@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name https://api.sig-cra.metamagagency.com;
+    server_name api.sig-cra.metamagagency.com;
     root /var/www/html/public;
     index index.php index.html index.htm;
     client_max_body_size 3G;  # Allow large uploads
