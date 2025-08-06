@@ -53,7 +53,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-forge}
-      MYSQL_USER: ${DB_USERNAME:-forge}
+      #MYSQL_USER: ${DB_USERNAME:-forge}
       #MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
     volumes:
