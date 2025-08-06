@@ -57,6 +57,14 @@ services:
     restart: unless-stopped
     labels:
       - "com.metamag.project=sig-platform"
+    command: >
+          sh -c "
+            php artisan config:clear &&
+            php artisan cache:clear &&
+            php artisan route:clear &&
+            php artisan view:clear &&
+            php artisan config:cache &&
+            php-fpm"
 
   api-laravel-nginx:
     image: nginx:alpine
