@@ -13,9 +13,11 @@ services:
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=sigcratotumo@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+     # - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      #- "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      #- "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.web.http.middlewares=redirect-to-https@docker"
+      - "--http.middlewares.redirect-to-https.redirectscheme.scheme=https"
     ports:
       - "80:80"
       - "443:443"
@@ -45,7 +47,7 @@ services:
     env_file: ./apps/api-laravel/.env
     #user: "33:999"
     volumes:
-      - api-laravel-vendor:/var/www/html/vendor
+ 
       - ./tools/docker/php/upload.ini:/usr/local/etc/php/conf.d/uploads.ini
       - ./tools/docker/php/www.conf:/usr/local/etc/php-fpm.d/zz-www.conf
       - ./apps/tileserver-gl:/data
@@ -72,20 +74,18 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=app-network"
+
+      # --- Define the service ONCE ---
+      - "traefik.http.services.api-laravel-svc.loadbalancer.server.port=80"
+
+      # --- Router 1: For the API subdomain ---
       - "traefik.http.routers.api-laravel.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.api-laravel.entrypoints=websecure"
       - "traefik.http.routers.api-laravel.tls.certresolver=myresolver"
-      - "traefik.http.services.api-laravel.loadbalancer.server.port=80"
-      - "traefik.docker.network=app-network"
-      # ✅ Apply CORS middleware to this service
+      - "traefik.http.routers.api-laravel.service=api-laravel-svc" # <-- Point to the service
       - "traefik.http.routers.api-laravel.middlewares=cors@docker"
-      # ✅ Extra router for /config.json on main domain
-      #- "traefik.http.routers.configjson.rule=Host(`${DOMAIN}`) && Path(`/config.json`)"
-      - "traefik.http.routers.configjson.entrypoints=websecure"
-      - "traefik.http.routers.configjson.tls.certresolver=myresolver"
-      - "traefik.http.services.configjson.loadbalancer.server.port=80"
-      - "traefik.http.routers.configjson.middlewares=cors@docker"
-      - "com.metamag.project=sig-platform"
+ 
 
   client-ui-nginx:
     image: lcrojano1/nginx-client-ui-cra:latest
@@ -131,9 +131,5 @@ networks:
         - "com.metamag.project=sig-platform"
 
 volumes:
-  api-laravel-vendor:
   composer-cache:
-  client-ui-node-modules:
-  client-ui-pnpm-store:
-  client-ui-cache:
   tileserver_data:
