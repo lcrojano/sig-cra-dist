@@ -26,9 +26,6 @@ services:
       - "com.metamag.project=sig-platform"
 
   api-laravel:
-    build:
-      context: ./apps/api-laravel
-      dockerfile: Dockerfile
     env_file: 
       - ./apps/api-laravel/.env
     volumes:
