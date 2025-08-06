@@ -102,7 +102,6 @@ services:
       - mysql_root_password
   
   tileserver:
-    image:  klokantech/tileserver-gl:v2.6.0
     volumes:
       - ./apps/tileserver-gl:/data:ro
     command: --verbose --config /data/tileserver-gl-config-colombia.json

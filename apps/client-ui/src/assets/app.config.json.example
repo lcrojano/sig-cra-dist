@@ -1,0 +1,16 @@
+{
+  "production": true,
+  "baseUrl": {
+    "frontend": "https://sig-cra.metamagagency.com",
+    "backend": "https://api.sig-cra.metamagagency.com",
+    "api": "https://api.sig-cra.metamagagency.com/api/",
+    "tileserver": "https://tiles.sig-cra.metamagagency.com"
+  },
+  "oauth2": {
+    "token": "https://api.sig-cra.metamagagency.com/oauth/token",
+    "base": "https://api.sig-cra.metamagagency.com/api/oauth/",
+    "whitelist": {
+      "urlContains": "token/refresh"
+    }
+  }
+}
