@@ -103,7 +103,7 @@ services:
   
   tileserver:
     volumes:
-      - ./apps/tileserver-gl:/data:ro
+      - ./apps/tileserver-gl:/data
     command: --verbose --config /data/tileserver-gl-config-colombia.json
     networks:
       - app-network
